@@ -172,60 +172,61 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
 
     @register_to_config
     def __init__(
-        self,
-        sample_size: Optional[int] = None,
-        in_channels: int = 4,
-        out_channels: int = 4,
-        center_input_sample: bool = False,
-        flip_sin_to_cos: bool = True,
-        freq_shift: int = 0,
-        down_block_types: Tuple[str] = (
-            "CrossAttnDownBlock2D",
-            "CrossAttnDownBlock2D",
-            "CrossAttnDownBlock2D",
-            "DownBlock2D",
-        ),
-        mid_block_type: Optional[str] = "UNetMidBlock2DCrossAttn",
-        up_block_types: Tuple[str] = ("UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D"),
-        only_cross_attention: Union[bool, Tuple[bool]] = False,
-        block_out_channels: Tuple[int] = (320, 640, 1280, 1280),
-        layers_per_block: Union[int, Tuple[int]] = 2,
-        downsample_padding: int = 1,
-        mid_block_scale_factor: float = 1,
-        dropout: float = 0.0,
-        act_fn: str = "silu",
-        norm_num_groups: Optional[int] = 32,
-        norm_eps: float = 1e-5,
-        cross_attention_dim: Union[int, Tuple[int]] = 1280,
-        transformer_layers_per_block: Union[int, Tuple[int], Tuple[Tuple]] = 1,
-        reverse_transformer_layers_per_block: Optional[Tuple[Tuple[int]]] = None,
-        encoder_hid_dim: Optional[int] = None,
-        encoder_hid_dim_type: Optional[str] = None,
-        attention_head_dim: Union[int, Tuple[int]] = 8,
-        num_attention_heads: Optional[Union[int, Tuple[int]]] = None,
-        dual_cross_attention: bool = False,
-        use_linear_projection: bool = False,
-        class_embed_type: Optional[str] = None,
-        addition_embed_type: Optional[str] = None,
-        addition_time_embed_dim: Optional[int] = None,
-        num_class_embeds: Optional[int] = None,
-        upcast_attention: bool = False,
-        resnet_time_scale_shift: str = "default",
-        resnet_skip_time_act: bool = False,
-        resnet_out_scale_factor: int = 1.0,
-        time_embedding_type: str = "positional",
-        time_embedding_dim: Optional[int] = None,
-        time_embedding_act_fn: Optional[str] = None,
-        timestep_post_act: Optional[str] = None,
-        time_cond_proj_dim: Optional[int] = None,
-        conv_in_kernel: int = 3,
-        conv_out_kernel: int = 3,
-        projection_class_embeddings_input_dim: Optional[int] = None,
-        attention_type: str = "default",
-        class_embeddings_concat: bool = False,
-        mid_block_only_cross_attention: Optional[bool] = None,
-        cross_attention_norm: Optional[str] = None,
-        addition_embed_type_num_heads=64,
+            self,
+            sample_size: Optional[int] = None,
+            in_channels: int = 4,
+            out_channels: int = 4,
+            center_input_sample: bool = False,
+            flip_sin_to_cos: bool = True,
+            freq_shift: int = 0,
+            down_block_types: Tuple[str] = (
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "DownBlock2D",
+            ),
+            mid_block_type: Optional[str] = "UNetMidBlock2DCrossAttn",
+            up_block_types: Tuple[str] = (
+            "UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D"),
+            only_cross_attention: Union[bool, Tuple[bool]] = False,
+            block_out_channels: Tuple[int] = (320, 640, 1280, 1280),
+            layers_per_block: Union[int, Tuple[int]] = 2,
+            downsample_padding: int = 1,
+            mid_block_scale_factor: float = 1,
+            dropout: float = 0.0,
+            act_fn: str = "silu",
+            norm_num_groups: Optional[int] = 32,
+            norm_eps: float = 1e-5,
+            cross_attention_dim: Union[int, Tuple[int]] = 1280,
+            transformer_layers_per_block: Union[int, Tuple[int], Tuple[Tuple]] = 1,
+            reverse_transformer_layers_per_block: Optional[Tuple[Tuple[int]]] = None,
+            encoder_hid_dim: Optional[int] = None,
+            encoder_hid_dim_type: Optional[str] = None,
+            attention_head_dim: Union[int, Tuple[int]] = 8,
+            num_attention_heads: Optional[Union[int, Tuple[int]]] = None,
+            dual_cross_attention: bool = False,
+            use_linear_projection: bool = False,
+            class_embed_type: Optional[str] = None,
+            addition_embed_type: Optional[str] = None,
+            addition_time_embed_dim: Optional[int] = None,
+            num_class_embeds: Optional[int] = None,
+            upcast_attention: bool = False,
+            resnet_time_scale_shift: str = "default",
+            resnet_skip_time_act: bool = False,
+            resnet_out_scale_factor: int = 1.0,
+            time_embedding_type: str = "positional",
+            time_embedding_dim: Optional[int] = None,
+            time_embedding_act_fn: Optional[str] = None,
+            timestep_post_act: Optional[str] = None,
+            time_cond_proj_dim: Optional[int] = None,
+            conv_in_kernel: int = 3,
+            conv_out_kernel: int = 3,
+            projection_class_embeddings_input_dim: Optional[int] = None,
+            attention_type: str = "default",
+            class_embeddings_concat: bool = False,
+            mid_block_only_cross_attention: Optional[bool] = None,
+            cross_attention_norm: Optional[str] = None,
+            addition_embed_type_num_heads=64,
     ):
         super().__init__()
 
@@ -651,7 +652,7 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
         return processors
 
     def set_attn_processor(
-        self, processor: Union[AttentionProcessor, Dict[str, AttentionProcessor]], _remove_lora=False
+            self, processor: Union[AttentionProcessor, Dict[str, AttentionProcessor]], _remove_lora=False
     ):
         r"""
         Sets the attention processor to use to compute attention.
@@ -803,20 +804,20 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
                     setattr(upsample_block, k, None)
 
     def forward(
-        self,
-        sample: torch.FloatTensor,
-        timestep: Union[torch.Tensor, float, int],
-        encoder_hidden_states: torch.Tensor,
-        class_labels: Optional[torch.Tensor] = None,
-        timestep_cond: Optional[torch.Tensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-        added_cond_kwargs: Optional[Dict[str, torch.Tensor]] = None,
-        down_block_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
-        mid_block_additional_residual: Optional[torch.Tensor] = None,
-        down_intrablock_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
-        encoder_attention_mask: Optional[torch.Tensor] = None,
-        return_dict: bool = True,
+            self,
+            sample: torch.FloatTensor,
+            timestep: Union[torch.Tensor, float, int],
+            encoder_hidden_states: torch.Tensor,
+            class_labels: Optional[torch.Tensor] = None,
+            timestep_cond: Optional[torch.Tensor] = None,
+            attention_mask: Optional[torch.Tensor] = None,
+            cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+            added_cond_kwargs: Optional[Dict[str, torch.Tensor]] = None,
+            down_block_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
+            mid_block_additional_residual: Optional[torch.Tensor] = None,
+            down_intrablock_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
+            encoder_attention_mask: Optional[torch.Tensor] = None,
+            return_dict: bool = True,
     ) -> Union[UNet2DConditionOutput, Tuple]:
         r"""
         The [`UNet2DConditionModel`] forward method.
@@ -876,7 +877,7 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
         # The overall upsampling factor is equal to 2 ** (# num of upsampling layers).
         # However, the upsampling interpolation output size can be forced to fit any upsampling size
         # on the fly if necessary.
-        default_overall_up_factor = 2**self.num_upsamplers
+        default_overall_up_factor = 2 ** self.num_upsamplers
 
         # upsample size should be forwarded when sample is not a multiple of `default_overall_up_factor`
         forward_upsample_size = False
@@ -1091,7 +1092,7 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
             new_down_block_res_samples = ()
 
             for down_block_res_sample, down_block_additional_residual in zip(
-                down_block_res_samples, down_block_additional_residuals
+                    down_block_res_samples, down_block_additional_residuals
             ):
                 down_block_res_sample = down_block_res_sample + down_block_additional_residual
                 new_down_block_res_samples = new_down_block_res_samples + (down_block_res_sample,)
@@ -1114,9 +1115,9 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
 
             # To support T2I-Adapter-XL
             if (
-                is_adapter
-                and len(down_intrablock_additional_residuals) > 0
-                and sample.shape == down_intrablock_additional_residuals[0].shape
+                    is_adapter
+                    and len(down_intrablock_additional_residuals) > 0
+                    and sample.shape == down_intrablock_additional_residuals[0].shape
             ):
                 sample += down_intrablock_additional_residuals.pop(0)
 
@@ -1127,7 +1128,7 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
         for i, upsample_block in enumerate(self.up_blocks):
             is_final_block = i == len(self.up_blocks) - 1
 
-            res_samples = down_block_res_samples[-len(upsample_block.resnets) :]
+            res_samples = down_block_res_samples[-len(upsample_block.resnets):]
             down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]
 
             # if we have not reached the final block and need to forward the
@@ -1154,7 +1155,7 @@ class ConsistorySDXLUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditio
                     upsample_size=upsample_size,
                     scale=lora_scale,
                 )
-            
+
             self.latent_store(sample.detach(), t=timestep, layer_index=i)
 
         # 6. post-process

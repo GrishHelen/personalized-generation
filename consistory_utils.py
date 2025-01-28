@@ -17,14 +17,16 @@ if is_xformers_available():
 else:
     xformers = None
 
+
 class FeatureInjector:
-    def __init__(self, nn_map, nn_distances, attn_masks, inject_range_alpha=[(10,20,0.8)], swap_strategy='min', dist_thr='dynamic', inject_unet_parts=['up']):
+    def __init__(self, nn_map, nn_distances, attn_masks, inject_range_alpha=[(10, 20, 0.8)], swap_strategy='min',
+                 dist_thr='dynamic', inject_unet_parts=['up']):
         self.nn_map = nn_map
         self.nn_distances = nn_distances
         self.attn_masks = attn_masks
 
         self.inject_range_alpha = inject_range_alpha if isinstance(inject_range_alpha, list) else [inject_range_alpha]
-        self.swap_strategy = swap_strategy # 'min / 'mean' / 'first'
+        self.swap_strategy = swap_strategy  # 'min / 'mean' / 'first'
         self.dist_thr = dist_thr
         self.inject_unet_parts = inject_unet_parts
         self.inject_res = [64]
@@ -40,11 +42,13 @@ class FeatureInjector:
         nn_map = self.nn_map[output_res]
         nn_distances = self.nn_distances[output_res]
         attn_masks = self.attn_masks[output_res]
-        vector_dim = output_res**2
+        vector_dim = output_res ** 2
 
-        alpha = next((alpha for min_range, max_range, alpha in self.inject_range_alpha if min_range <= curr_iter <= max_range), None)
+        alpha = next(
+            (alpha for min_range, max_range, alpha in self.inject_range_alpha if min_range <= curr_iter <= max_range),
+            None)
         if alpha:
-            old_output = output#.clone()
+            old_output = output  # .clone()
             for i in range(bsz):
                 other_outputs = []
 
@@ -52,7 +56,7 @@ class FeatureInjector:
                     curr_mapping = extended_mapping[i]
 
                     # If the current image is not mapped to any other image, skip
-                    if not torch.any(torch.cat([curr_mapping[:i], curr_mapping[i+1:]])):
+                    if not torch.any(torch.cat([curr_mapping[:i], curr_mapping[i + 1:]])):
                         continue
 
                     min_dists = nn_distances[i][curr_mapping].argmin(dim=0)
@@ -65,7 +69,7 @@ class FeatureInjector:
 
                     other_outputs = old_output[curr_mapping][min_dists, curr_nn_map][final_mask_tgt]
 
-                    output[i][final_mask_tgt] = alpha * other_outputs + (1 - alpha)*old_output[i][final_mask_tgt]
+                    output[i][final_mask_tgt] = alpha * other_outputs + (1 - alpha) * old_output[i][final_mask_tgt]
 
             if anchors_cache and anchors_cache.is_cache_mode():
                 if place_in_unet not in anchors_cache.h_out_cache:
@@ -86,14 +90,16 @@ class FeatureInjector:
         nn_map = self.nn_map[output_res]
         nn_distances = self.nn_distances[output_res]
         attn_masks = self.attn_masks[output_res]
-        vector_dim = output_res**2
+        vector_dim = output_res ** 2
 
-        alpha = next((alpha for min_range, max_range, alpha in self.inject_range_alpha if min_range <= curr_iter <= max_range), None)
+        alpha = next(
+            (alpha for min_range, max_range, alpha in self.inject_range_alpha if min_range <= curr_iter <= max_range),
+            None)
         if alpha:
 
             anchor_outputs = anchors_cache.h_out_cache[place_in_unet][curr_iter]
 
-            old_output = output#.clone()
+            old_output = output  # .clone()
             for i in range(bsz):
                 other_outputs = []
 
@@ -108,19 +114,19 @@ class FeatureInjector:
 
                     other_outputs = anchor_outputs[min_dists, curr_nn_map][final_mask_tgt]
 
-                    output[i][final_mask_tgt] = alpha * other_outputs + (1 - alpha)*old_output[i][final_mask_tgt]
+                    output[i][final_mask_tgt] = alpha * other_outputs + (1 - alpha) * old_output[i][final_mask_tgt]
 
         return output
 
 
 class AnchorCache:
     def __init__(self):
-        self.input_h_cache = {} # place_in_unet, iter, h_in
-        self.h_out_cache = {} # place_in_unet, iter, h_out
+        self.input_h_cache = {}  # place_in_unet, iter, h_in
+        self.h_out_cache = {}  # place_in_unet, iter, h_out
         self.anchors_last_mask = None
         self.dift_cache = None
 
-        self.mode = 'cache' # mode can be 'cache' or 'inject'
+        self.mode = 'cache'  # mode can be 'cache' or 'inject'
 
     def set_mode(self, mode):
         self.mode = mode
@@ -136,7 +142,6 @@ class AnchorCache:
 
     def is_cache_mode(self):
         return self.mode == 'cache'
-
 
     def to_device(self, device):
         for key, value in self.input_h_cache.items():
@@ -160,9 +165,9 @@ class QueryStore:
         self.query_store = defaultdict(list)
         self.mode = mode
         self.t_range = t_range
-        self.strengthes = np.linspace(strength_start, strength_end, (t_range[1] - t_range[0])+1)
+        self.strengthes = np.linspace(strength_start, strength_end, (t_range[1] - t_range[0]) + 1)
 
-    def set_mode(self, mode): # mode can be 'cache' or 'inject'
+    def set_mode(self, mode):  # mode can be 'cache' or 'inject'
         self.mode = mode
 
     def cache_query(self, query, place_in_unet: str):
@@ -177,6 +182,7 @@ class QueryStore:
             new_query = query
 
         return new_query
+
 
 class DIFTLatentStore:
     def __init__(self, steps: List[int], up_ft_indices: List[int]):

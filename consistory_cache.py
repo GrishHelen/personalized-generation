@@ -17,7 +17,7 @@ from utils.ptp_utils import view_images
 def load_pipeline(gpu_id=0):
     float_type = torch.float16
     sd_id = "stabilityai/stable-diffusion-xl-base-1.0"
-    
+
     device = torch.device(f'cuda:{gpu_id}') if torch.cuda.is_available() else torch.device('cpu')
     unet = ConsistorySDXLUNet2DConditionModel.from_pretrained(sd_id, subfolder="unet", torch_dtype=float_type)
     scheduler = DDIMScheduler.from_pretrained(sd_id, subfolder="scheduler")
@@ -26,8 +26,9 @@ def load_pipeline(gpu_id=0):
         sd_id, unet=unet, torch_dtype=float_type, variant="fp16", use_safetensors=True, scheduler=scheduler
     ).to(device)
     story_pipeline.enable_freeu(s1=0.6, s2=0.4, b1=1.1, b2=1.2)
-    
+
     return story_pipeline
+
 
 def create_anchor_mapping(bsz, anchor_indices=[0]):
     anchor_mapping = torch.eye(bsz, dtype=torch.bool)
@@ -35,6 +36,7 @@ def create_anchor_mapping(bsz, anchor_indices=[0]):
         anchor_mapping[:, anchor_idx] = True
 
     return anchor_mapping
+
 
 def create_token_indices(prompts, batch_size, concept_token, tokenizer):
     if isinstance(concept_token, str):
@@ -49,6 +51,7 @@ def create_token_indices(prompts, batch_size, concept_token, tokenizer):
         token_indices[i, batch_loc] = token_loc
 
     return token_indices
+
 
 def create_latents(story_pipeline, seed, batch_size, same_latent, device, float_type):
     # if seed is int
@@ -69,11 +72,12 @@ def create_latents(story_pipeline, seed, batch_size, same_latent, device, float_
 
     return latents, g
 
+
 def run_anchor_generation(story_pipeline, prompts, concept_token,
-                   seed=40, n_steps=50, mask_dropout=0.5,
-                   same_latent=False, share_queries=True,
-                   perform_sdsa=True, perform_injection=True,
-                   downscale_rate=4):
+                          seed=40, n_steps=50, mask_dropout=0.5,
+                          same_latent=False, share_queries=True,
+                          perform_sdsa=True, perform_injection=True,
+                          downscale_rate=4):
     latent_resolutions = [32, 64]
 
     device = story_pipeline.device
@@ -91,7 +95,7 @@ def run_anchor_generation(story_pipeline, prompts, concept_token,
     }
 
     default_extended_attn_kwargs = {'extend_kv_unet_parts': ['up']}
-    query_store_kwargs={'t_range': [0,n_steps//10], 'strength_start': 0.9, 'strength_end': 0.81836735}
+    query_store_kwargs = {'t_range': [0, n_steps // 10], 'strength_start': 0.9, 'strength_end': 0.81836735}
 
     latents, g = create_latents(story_pipeline, seed, batch_size, same_latent, device, float_type)
 
@@ -107,13 +111,13 @@ def run_anchor_generation(story_pipeline, prompts, concept_token,
         extended_attn_kwargs = {**default_extended_attn_kwargs, 't_range': []}
 
     print(extended_attn_kwargs['t_range'])
-    out = story_pipeline(prompt=prompts, generator=g, latents=latents, 
-                        attention_store_kwargs=default_attention_store_kwargs,
-                        extended_attn_kwargs=extended_attn_kwargs,
-                        share_queries=share_queries,
-                        query_store_kwargs=query_store_kwargs,
-                        anchors_cache=anchor_cache_first_stage,
-                        num_inference_steps=n_steps)
+    out = story_pipeline(prompt=prompts, generator=g, latents=latents,
+                         attention_store_kwargs=default_attention_store_kwargs,
+                         extended_attn_kwargs=extended_attn_kwargs,
+                         share_queries=share_queries,
+                         query_store_kwargs=query_store_kwargs,
+                         anchors_cache=anchor_cache_first_stage,
+                         num_inference_steps=n_steps)
     last_masks = story_pipeline.attention_store.last_mask
 
     dift_features = unet.latent_store.dift_features['261_0'][batch_size:]
@@ -129,19 +133,20 @@ def run_anchor_generation(story_pipeline, prompts, concept_token,
 
     # ------------------ #
     # Extended attention with nn_map #
-    
-    if perform_injection:
-        feature_injector = FeatureInjector(nn_map, nn_distances, last_masks, inject_range_alpha=[(n_steps//10, n_steps//3,0.8)], 
-                                        swap_strategy='min', inject_unet_parts=['up', 'down'], dist_thr='dynamic')
 
-        out = story_pipeline(prompt=prompts, generator=g, latents=latents, 
-                            attention_store_kwargs=default_attention_store_kwargs,
-                            extended_attn_kwargs=extended_attn_kwargs,
-                            share_queries=share_queries,
-                            query_store_kwargs=query_store_kwargs,
-                            feature_injector=feature_injector,
-                            anchors_cache=anchor_cache_second_stage,
-                            num_inference_steps=n_steps)
+    if perform_injection:
+        feature_injector = FeatureInjector(nn_map, nn_distances, last_masks,
+                                           inject_range_alpha=[(n_steps // 10, n_steps // 3, 0.8)],
+                                           swap_strategy='min', inject_unet_parts=['up', 'down'], dist_thr='dynamic')
+
+        out = story_pipeline(prompt=prompts, generator=g, latents=latents,
+                             attention_store_kwargs=default_attention_store_kwargs,
+                             extended_attn_kwargs=extended_attn_kwargs,
+                             share_queries=share_queries,
+                             query_store_kwargs=query_store_kwargs,
+                             feature_injector=feature_injector,
+                             anchors_cache=anchor_cache_second_stage,
+                             num_inference_steps=n_steps)
         img_all = view_images([np.array(x) for x in out.images], display_image=False, downscale_rate=downscale_rate)
         # display_attn_maps(story_pipeline.attention_store.last_mask, out.images)
 
@@ -152,10 +157,11 @@ def run_anchor_generation(story_pipeline, prompts, concept_token,
         gc.collect()
     else:
         img_all = view_images([np.array(x) for x in out.images], display_image=False, downscale_rate=downscale_rate)
-    
+
     return out.images, img_all, anchor_cache_first_stage, anchor_cache_second_stage
 
-def run_extra_generation(story_pipeline, prompts, concept_token, 
+
+def run_extra_generation(story_pipeline, prompts, concept_token,
                          anchor_cache_first_stage, anchor_cache_second_stage,
                          seed=40, n_steps=50, mask_dropout=0.5,
                          same_latent=False, share_queries=True,
@@ -178,7 +184,7 @@ def run_extra_generation(story_pipeline, prompts, concept_token,
     }
 
     default_extended_attn_kwargs = {'extend_kv_unet_parts': ['up']}
-    query_store_kwargs={'t_range': [0,n_steps//10], 'strength_start': 0.9, 'strength_end': 0.81836735}
+    query_store_kwargs = {'t_range': [0, n_steps // 10], 'strength_start': 0.9, 'strength_end': 0.81836735}
 
     extra_batch_size = batch_size + 2
     if isinstance(seed, list):
@@ -199,13 +205,13 @@ def run_extra_generation(story_pipeline, prompts, concept_token,
         extended_attn_kwargs = {**default_extended_attn_kwargs, 't_range': []}
 
     print(extended_attn_kwargs['t_range'])
-    out = story_pipeline(prompt=prompts, generator=g, latents=latents, 
-                        attention_store_kwargs=default_attention_store_kwargs,
-                        extended_attn_kwargs=extended_attn_kwargs,
-                        share_queries=share_queries,
-                        query_store_kwargs=query_store_kwargs,
-                        anchors_cache=anchor_cache_first_stage,
-                        num_inference_steps=n_steps)
+    out = story_pipeline(prompt=prompts, generator=g, latents=latents,
+                         attention_store_kwargs=default_attention_store_kwargs,
+                         extended_attn_kwargs=extended_attn_kwargs,
+                         share_queries=share_queries,
+                         query_store_kwargs=query_store_kwargs,
+                         anchors_cache=anchor_cache_first_stage,
+                         num_inference_steps=n_steps)
     last_masks = story_pipeline.attention_store.last_mask
 
     dift_features = unet.latent_store.dift_features['261_0'][batch_size:]
@@ -214,26 +220,28 @@ def run_extra_generation(story_pipeline, prompts, concept_token,
     anchor_dift_features = anchor_cache_first_stage.dift_cache
     anchor_last_masks = anchor_cache_first_stage.anchors_last_mask
 
-    nn_map, nn_distances = anchor_nn_map(dift_features, anchor_dift_features, last_masks, anchor_last_masks, latent_resolutions, device)
+    nn_map, nn_distances = anchor_nn_map(dift_features, anchor_dift_features, last_masks, anchor_last_masks,
+                                         latent_resolutions, device)
 
     torch.cuda.empty_cache()
     gc.collect()
 
     # ------------------ #
     # Extended attention with nn_map #
-    
-    if perform_injection:
-        feature_injector = FeatureInjector(nn_map, nn_distances, last_masks, inject_range_alpha=[(n_steps//10, n_steps//3,0.8)], 
-                                        swap_strategy='min', inject_unet_parts=['up', 'down'], dist_thr='dynamic')
 
-        out = story_pipeline(prompt=prompts, generator=g, latents=latents, 
-                            attention_store_kwargs=default_attention_store_kwargs,
-                            extended_attn_kwargs=extended_attn_kwargs,
-                            share_queries=share_queries,
-                            query_store_kwargs=query_store_kwargs,
-                            feature_injector=feature_injector,
-                            anchors_cache=anchor_cache_second_stage,
-                            num_inference_steps=n_steps)
+    if perform_injection:
+        feature_injector = FeatureInjector(nn_map, nn_distances, last_masks,
+                                           inject_range_alpha=[(n_steps // 10, n_steps // 3, 0.8)],
+                                           swap_strategy='min', inject_unet_parts=['up', 'down'], dist_thr='dynamic')
+
+        out = story_pipeline(prompt=prompts, generator=g, latents=latents,
+                             attention_store_kwargs=default_attention_store_kwargs,
+                             extended_attn_kwargs=extended_attn_kwargs,
+                             share_queries=share_queries,
+                             query_store_kwargs=query_store_kwargs,
+                             feature_injector=feature_injector,
+                             anchors_cache=anchor_cache_second_stage,
+                             num_inference_steps=n_steps)
         img_all = view_images([np.array(x) for x in out.images], display_image=False, downscale_rate=downscale_rate)
         # display_attn_maps(story_pipeline.attention_store.last_mask, out.images)
 
@@ -241,5 +249,5 @@ def run_extra_generation(story_pipeline, prompts, concept_token,
         gc.collect()
     else:
         img_all = view_images([np.array(x) for x in out.images], display_image=False, downscale_rate=downscale_rate)
-    
+
     return out.images, img_all

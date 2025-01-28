@@ -43,55 +43,55 @@ logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 T = torch.Tensor
 
+
 class ConsistoryExtendAttnSDXLPipeline(
     StableDiffusionXLPipeline
 ):
 
-
     @torch.no_grad()
     @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
-        self,
-        prompt: Union[str, List[str]] = None,
-        prompt_2: Optional[Union[str, List[str]]] = None,
-        height: Optional[int] = None,
-        width: Optional[int] = None,
-        num_inference_steps: int = 50,
-        denoising_end: Optional[float] = None,
-        guidance_scale: float = 5.0,
-        negative_prompt: Optional[Union[str, List[str]]] = None,
-        negative_prompt_2: Optional[Union[str, List[str]]] = None,
-        num_images_per_prompt: Optional[int] = 1,
-        eta: float = 0.0,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        latents: Optional[torch.FloatTensor] = None,
-        prompt_embeds: Optional[torch.FloatTensor] = None,
-        negative_prompt_embeds: Optional[torch.FloatTensor] = None,
-        pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
-        negative_pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
-        output_type: Optional[str] = "pil",
-        return_dict: bool = True,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-        guidance_rescale: float = 0.0,
-        original_size: Optional[Tuple[int, int]] = None,
-        crops_coords_top_left: Tuple[int, int] = (0, 0),
-        target_size: Optional[Tuple[int, int]] = None,
-        negative_original_size: Optional[Tuple[int, int]] = None,
-        negative_crops_coords_top_left: Tuple[int, int] = (0, 0),
-        negative_target_size: Optional[Tuple[int, int]] = None,
-        clip_skip: Optional[int] = None,
-        callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
-        callback_on_step_end_tensor_inputs: List[str] = ["latents"],
-        
-        attention_store_kwargs: Optional[Dict] = None,
-        extended_attn_kwargs: Optional[Dict] = None,
-        share_queries: bool = False,
-        query_store_kwargs: Optional[Dict] = {},
-        feature_injector: Optional[FeatureInjector] = None,
-        anchors_cache: Optional[AnchorCache] = None,
+            self,
+            prompt: Union[str, List[str]] = None,
+            prompt_2: Optional[Union[str, List[str]]] = None,
+            height: Optional[int] = None,
+            width: Optional[int] = None,
+            num_inference_steps: int = 50,
+            denoising_end: Optional[float] = None,
+            guidance_scale: float = 5.0,
+            negative_prompt: Optional[Union[str, List[str]]] = None,
+            negative_prompt_2: Optional[Union[str, List[str]]] = None,
+            num_images_per_prompt: Optional[int] = 1,
+            eta: float = 0.0,
+            generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+            latents: Optional[torch.FloatTensor] = None,
+            prompt_embeds: Optional[torch.FloatTensor] = None,
+            negative_prompt_embeds: Optional[torch.FloatTensor] = None,
+            pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
+            negative_pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
+            output_type: Optional[str] = "pil",
+            return_dict: bool = True,
+            cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+            guidance_rescale: float = 0.0,
+            original_size: Optional[Tuple[int, int]] = None,
+            crops_coords_top_left: Tuple[int, int] = (0, 0),
+            target_size: Optional[Tuple[int, int]] = None,
+            negative_original_size: Optional[Tuple[int, int]] = None,
+            negative_crops_coords_top_left: Tuple[int, int] = (0, 0),
+            negative_target_size: Optional[Tuple[int, int]] = None,
+            clip_skip: Optional[int] = None,
+            callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
+            callback_on_step_end_tensor_inputs: List[str] = ["latents"],
 
-        instance_latents: Optional[torch.FloatTensor] = None,
-        **kwargs,
+            attention_store_kwargs: Optional[Dict] = None,
+            extended_attn_kwargs: Optional[Dict] = None,
+            share_queries: bool = False,
+            query_store_kwargs: Optional[Dict] = {},
+            feature_injector: Optional[FeatureInjector] = None,
+            anchors_cache: Optional[AnchorCache] = None,
+
+            instance_latents: Optional[torch.FloatTensor] = None,
+            **kwargs,
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -372,10 +372,10 @@ class ConsistoryExtendAttnSDXLPipeline(
 
         # 8.1 Apply denoising_end
         if (
-            self.denoising_end is not None
-            and isinstance(self.denoising_end, float)
-            and self.denoising_end > 0
-            and self.denoising_end < 1
+                self.denoising_end is not None
+                and isinstance(self.denoising_end, float)
+                and self.denoising_end > 0
+                and self.denoising_end < 1
         ):
             discrete_timestep_cutoff = int(
                 round(
@@ -405,7 +405,8 @@ class ConsistoryExtendAttnSDXLPipeline(
                 self.attention_store.curr_iter = i
 
                 if instance_latents is not None:
-                    noised_instances = self.scheduler.add_noise(instance_latents, instance_noise, t.repeat(n_instances).long())
+                    noised_instances = self.scheduler.add_noise(instance_latents, instance_noise,
+                                                                t.repeat(n_instances).long())
                     latents[:n_instances] = noised_instances
 
                 # expand the latents if we are doing classifier free guidance
@@ -422,8 +423,8 @@ class ConsistoryExtendAttnSDXLPipeline(
                         t,
                         encoder_hidden_states=prompt_embeds,
                         timestep_cond=timestep_cond,
-                        cross_attention_kwargs={'query_store': query_store, 
-                                                'perform_extend_attn': False, 
+                        cross_attention_kwargs={'query_store': query_store,
+                                                'perform_extend_attn': False,
                                                 'record_attention': False},
                         added_cond_kwargs=added_cond_kwargs,
                         return_dict=False,
@@ -432,18 +433,18 @@ class ConsistoryExtendAttnSDXLPipeline(
                     query_store.set_mode('inject')
 
                 noise_pred = self.unet(
-                       latent_model_input,
-                        t,
-                        encoder_hidden_states=prompt_embeds,
-                        timestep_cond=timestep_cond,
-                        cross_attention_kwargs={'query_store': query_store, 
-                                                'perform_extend_attn': True, 
-                                                'record_attention': True, 
-                                                'feature_injector': feature_injector,
-                                                'anchors_cache': anchors_cache},
-                        added_cond_kwargs=added_cond_kwargs,
-                        return_dict=False,
-                    )[0]
+                    latent_model_input,
+                    t,
+                    encoder_hidden_states=prompt_embeds,
+                    timestep_cond=timestep_cond,
+                    cross_attention_kwargs={'query_store': query_store,
+                                            'perform_extend_attn': True,
+                                            'record_attention': True,
+                                            'feature_injector': feature_injector,
+                                            'anchors_cache': anchors_cache},
+                    added_cond_kwargs=added_cond_kwargs,
+                    return_dict=False,
+                )[0]
 
                 # perform guidance
                 if self.do_classifier_free_guidance:
@@ -483,7 +484,7 @@ class ConsistoryExtendAttnSDXLPipeline(
                 if XLA_AVAILABLE:
                     # xm.mark_step()
                     pass
-                
+
                 # Update attention store mask
                 self.attention_store.aggregate_last_steps_attention()
 

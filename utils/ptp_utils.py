@@ -62,6 +62,7 @@ from IPython.display import display
 from utils.general_utils import attn_map_to_binary
 import torch.nn.functional as F
 
+
 def view_images(images: Union[np.ndarray, List],
                 num_rows: int = 1,
                 offset_ratio: float = 0.02,
@@ -106,14 +107,14 @@ class AttentionStore:
         Initialize an empty AttentionStore :param step_index: used to visualize only a specific step in the diffusion
         process
         """
-        self.attn_res = attention_store_kwargs.get('attn_res', (32,32))
+        self.attn_res = attention_store_kwargs.get('attn_res', (32, 32))
         self.token_indices = attention_store_kwargs['token_indices']
         bsz = self.token_indices.size(1)
         self.mask_background_query = attention_store_kwargs.get('mask_background_query', False)
         self.original_attn_masks = attention_store_kwargs.get('original_attn_masks', None)
         self.extended_mapping = attention_store_kwargs.get('extended_mapping', torch.ones(bsz, bsz).bool())
         self.mask_dropout = attention_store_kwargs.get('mask_dropout', 0.0)
-        torch.manual_seed(0) # For dropout mask reproducibility
+        torch.manual_seed(0)  # For dropout mask reproducibility
 
         self.curr_iter = 0
         self.ALL_RES = [32, 64]
@@ -124,8 +125,9 @@ class AttentionStore:
 
     def __call__(self, attn, is_cross: bool, place_in_unet: str, attn_heads: int):
         if is_cross and attn.shape[1] == np.prod(self.attn_res):
-            guidance_attention = attn[attn.size(0)//2:]
-            batched_guidance_attention = guidance_attention.reshape([guidance_attention.shape[0]//attn_heads, attn_heads, *guidance_attention.shape[1:]])
+            guidance_attention = attn[attn.size(0) // 2:]
+            batched_guidance_attention = guidance_attention.reshape(
+                [guidance_attention.shape[0] // attn_heads, attn_heads, *guidance_attention.shape[1:]])
             batched_guidance_attention = batched_guidance_attention.mean(dim=1)
             self.step_store[place_in_unet].append(batched_guidance_attention)
 
@@ -157,14 +159,17 @@ class AttentionStore:
         # and create the attention masks, unifying masks across the different concepts
         for tgt_size in self.ALL_RES:
             pixels = tgt_size ** 2
-            tgt_agg_attn_maps = [F.interpolate(x.unsqueeze(1), size=tgt_size, mode='bilinear').squeeze(1) for x in agg_attn_maps]
+            tgt_agg_attn_maps = [F.interpolate(x.unsqueeze(1), size=tgt_size, mode='bilinear').squeeze(1) for x in
+                                 agg_attn_maps]
 
             attn_masks = []
             for batch_item_map in tgt_agg_attn_maps:
                 concept_attn_masks = []
 
                 for concept_maps in batch_item_map:
-                    concept_attn_masks.append(torch.from_numpy(attn_map_to_binary(concept_maps, 1.)).to(attention_maps.device).bool().view(-1))
+                    concept_attn_masks.append(
+                        torch.from_numpy(attn_map_to_binary(concept_maps, 1.)).to(attention_maps.device).bool().view(
+                            -1))
 
                 concept_attn_masks = torch.stack(concept_attn_masks, dim=0).max(dim=0).values
                 attn_masks.append(concept_attn_masks)
@@ -196,7 +201,8 @@ class AttentionStore:
             # self.attn_masks[tgt_size] = output_attn_mask
 
     def get_attn_mask_bias(self, tgt_size, bsz=None):
-        attn_mask = self.attn_masks[tgt_size] if self.original_attn_masks is None else self.original_attn_masks[tgt_size]
+        attn_mask = self.attn_masks[tgt_size] if self.original_attn_masks is None else self.original_attn_masks[
+            tgt_size]
 
         if attn_mask is None:
             return None
@@ -213,20 +219,22 @@ class AttentionStore:
         attn_mask = self.last_mask_dropout[width]
         if attn_mask is None:
             return None
-        
-        n_patches = width**2
-        
 
-        output_attn_mask = torch.zeros((attn_mask.shape[0] * attn_mask.shape[1],), device=attn_mask.device, dtype=torch.bool)
+        n_patches = width ** 2
+
+        output_attn_mask = torch.zeros((attn_mask.shape[0] * attn_mask.shape[1],), device=attn_mask.device,
+                                       dtype=torch.bool)
         for j in range(attn_mask.shape[0]):
-            if i==j:
-                output_attn_mask[j*n_patches:(j+1)*n_patches] = 1
+            if i == j:
+                output_attn_mask[j * n_patches:(j + 1) * n_patches] = 1
             else:
-                if self.extended_mapping[i,j]:
+                if self.extended_mapping[i, j]:
                     if not self.mask_background_query:
-                        output_attn_mask[j*n_patches:(j+1)*n_patches] = attn_mask[j].unsqueeze(0) #.expand(n_patches, -1)
+                        output_attn_mask[j * n_patches:(j + 1) * n_patches] = attn_mask[j].unsqueeze(
+                            0)  # .expand(n_patches, -1)
                     else:
                         raise NotImplementedError('mask_background_query is not supported anymore')
-                        output_attn_mask[0, attn_mask[i], k*n_patches:(k+1)*n_patches] = attn_mask[j].unsqueeze(0).expand(attn_mask[i].sum(), -1)
+                        output_attn_mask[0, attn_mask[i], k * n_patches:(k + 1) * n_patches] = attn_mask[j].unsqueeze(
+                            0).expand(attn_mask[i].sum(), -1)
 
         return output_attn_mask

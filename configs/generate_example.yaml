@@ -22,7 +22,7 @@ save_images:
 prompts:
     style: "A photo of "
     subject: "an orange candle"
-    concept_token: "an orange candle"
+    concept_token: "candle"
     settings: [ "among the snowdrifts", "in the bathroom", "on the table next to the pastries" ]
 
 

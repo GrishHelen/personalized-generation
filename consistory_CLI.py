@@ -110,6 +110,6 @@ if __name__ == '__main__':
                            args.perform_sdsa, args.perform_injection,
                            args.downscale_rate, args.n_achors,
                            args.style, args.subject, args.concept_token, args.settings,
-                           args.out_dir)
+                           args.cache_cpu_offloading, args.out_dir)
     else:
         print("Invalid run type")

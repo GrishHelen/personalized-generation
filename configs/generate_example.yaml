@@ -1,0 +1,30 @@
+run:
+    run_type: "batch"
+
+story_pipeline:
+    gpu: 0
+
+generation_args:
+    seed: 40
+    n_steps: 50
+    mask_dropout: 0.5
+    same_latent: False
+    share_queries: True
+    perform_sdsa: True
+    perform_injection: True
+    n_achors: 2
+
+save_images:
+    out_dir: output/candle
+    downscale_rate: 4
+    save_image_all: True
+
+prompts:
+    style: "A photo of "
+    subject: "an orange candle"
+    concept_token: "an orange candle"
+    settings: [ "among the snowdrifts", "in the bathroom", "on the table next to the pastries" ]
+
+
+
+

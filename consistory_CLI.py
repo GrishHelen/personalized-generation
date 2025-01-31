@@ -10,7 +10,7 @@ from consistory_run import load_pipeline, run_batch_generation, run_anchor_gener
 
 def run_batch(gpu, seed=40, n_steps=50, mask_dropout=0.5,
               same_latent=False, share_queries=True, perform_sdsa=True, perform_injection=True,
-              downscale_rate=4, n_achors=2,
+              downscale_rate=4, n_anchors=2,
               style="A photo of ", subject="a cute dog", concept_token=['dog'],
               settings=["sitting in the beach", "standing in the snow"],
               out_dir=None):
@@ -21,7 +21,7 @@ def run_batch(gpu, seed=40, n_steps=50, mask_dropout=0.5,
                                              seed=seed, n_steps=n_steps, mask_dropout=mask_dropout,
                                              same_latent=same_latent, share_queries=share_queries,
                                              perform_sdsa=perform_sdsa, perform_injection=perform_injection,
-                                             downscale_rate=downscale_rate, n_achors=n_achors)
+                                             downscale_rate=downscale_rate, n_anchors=n_anchors)
 
     if out_dir is not None:
         for i, image in enumerate(images):
@@ -32,14 +32,14 @@ def run_batch(gpu, seed=40, n_steps=50, mask_dropout=0.5,
 
 def run_cached_anchors(gpu, seed=40, n_steps=50, mask_dropout=0.5,
                        same_latent=False, share_queries=True, perform_sdsa=True, perform_injection=True,
-                       downscale_rate=4, n_achors=2,
+                       downscale_rate=4, n_anchors=2,
                        style="A photo of ", subject="a cute dog", concept_token=['dog'],
                        settings=["sitting in the beach", "standing in the snow"],
                        cache_cpu_offloading=False, out_dir=None):
     story_pipeline = load_pipeline(gpu)
     prompts = [f'{style}{subject} {setting}' for setting in settings]
-    anchor_prompts = prompts[:n_achors]
-    extra_prompts = prompts[n_achors:]
+    anchor_prompts = prompts[:n_anchors]
+    extra_prompts = prompts[n_anchors:]
 
     anchor_out_images, anchor_image_all, anchor_cache_first_stage, anchor_cache_second_stage = run_anchor_generation(
         story_pipeline, anchor_prompts, concept_token,
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('--perform_sdsa', default=True, type=bool, required=False)
     parser.add_argument('--perform_injection', default=True, type=bool, required=False)
     parser.add_argument('--downscale_rate', default=4, type=int, required=False)
-    parser.add_argument('--n_achors', default=2, type=int, required=False)
+    parser.add_argument('--n_anchors', default=2, type=int, required=False)
 
     parser.add_argument('--style', default="A photo of ", type=str, required=False)
     parser.add_argument('--subject', default="a cute dog", type=str, required=False)
@@ -100,7 +100,7 @@ if __name__ == '__main__':
         run_batch(args.gpu, args.seed, args.n_steps, args.mask_dropout,
                   args.same_latent, args.share_queries,
                   args.perform_sdsa, args.perform_injection,
-                  args.downscale_rate, args.n_achors,
+                  args.downscale_rate, args.n_anchors,
                   args.style, args.subject, args.concept_token, args.settings,
                   args.out_dir)
 
@@ -108,7 +108,7 @@ if __name__ == '__main__':
         run_cached_anchors(args.gpu, args.seed, args.n_steps, args.mask_dropout,
                            args.same_latent, args.share_queries,
                            args.perform_sdsa, args.perform_injection,
-                           args.downscale_rate, args.n_achors,
+                           args.downscale_rate, args.n_anchors,
                            args.style, args.subject, args.concept_token, args.settings,
                            args.cache_cpu_offloading, args.out_dir)
     else:

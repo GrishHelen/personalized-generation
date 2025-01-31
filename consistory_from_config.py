@@ -25,7 +25,7 @@ if __name__ == "__main__":
         _, image_all = run_batch(config.story_pipeline.gpu, gen_args.seed, gen_args.n_steps,
                                  gen_args.mask_dropout, gen_args.same_latent, gen_args.share_queries,
                                  gen_args.perform_sdsa, gen_args.perform_injection,
-                                 config.save_images.downscale_rate, gen_args.n_achors,
+                                 config.save_images.downscale_rate, gen_args.n_anchors,
                                  config.prompts.style, config.prompts.subject, config.prompts.concept_token,
                                  config.prompts.settings,
                                  config.save_images.out_dir)
@@ -35,7 +35,7 @@ if __name__ == "__main__":
         run_cached_anchors(config.story_pipeline.gpu, gen_args.seed, gen_args.n_steps,
                            gen_args.mask_dropout, gen_args.same_latent, gen_args.share_queries,
                            gen_args.perform_sdsa, gen_args.perform_injection,
-                           config.save_images.downscale_rate, gen_args.n_achors,
+                           config.save_images.downscale_rate, gen_args.n_anchors,
                            config.prompts.style, config.prompts.subject, config.prompts.concept_token,
                            config.prompts.settings,
                            config.run.cache_cpu_offloading, config.save_images.out_dir)

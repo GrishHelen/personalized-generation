@@ -12,7 +12,7 @@ generation_args:
     share_queries: True
     perform_sdsa: True
     perform_injection: True
-    n_achors: 2
+    n_anchors: 2
 
 save_images:
     out_dir: output/candle

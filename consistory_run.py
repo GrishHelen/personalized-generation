@@ -80,7 +80,7 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
                          seed=40, n_steps=50, mask_dropout=0.5,
                          same_latent=False, share_queries=True,
                          perform_sdsa=True, perform_injection=True,
-                         downscale_rate=4, n_achors=2):
+                         downscale_rate=4, n_anchors=2):
     device = story_pipeline.device
     tokenizer = story_pipeline.tokenizer
     float_type = story_pipeline.dtype
@@ -89,7 +89,7 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
     batch_size = len(prompts)
 
     token_indices = create_token_indices(prompts, batch_size, concept_token, tokenizer)
-    anchor_mappings = create_anchor_mapping(batch_size, anchor_indices=list(range(n_achors)))
+    anchor_mappings = create_anchor_mapping(batch_size, anchor_indices=list(range(n_anchors)))
 
     default_attention_store_kwargs = {
         'token_indices': token_indices,

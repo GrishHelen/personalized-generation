@@ -126,17 +126,6 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
             hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
         )
 
-        attention_mask = attn.prepare_attention_mask(attention_mask, key_tokens, batch_size)
-        if attention_mask is not None:
-            # expand our mask's singleton query_tokens dimension:
-            #   [batch*heads,            1, key_tokens] ->
-            #   [batch*heads, query_tokens, key_tokens]
-            # so that it can be added as a bias onto the attention scores that xformers computes:
-            #   [batch*heads, query_tokens, key_tokens]
-            # we do this explicitly because xformers doesn't broadcast the singleton dimension for us.
-            _, query_tokens, _ = hidden_states.shape
-            attention_mask = attention_mask.expand(-1, query_tokens, -1)
-
         if attn.group_norm is not None:
             hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
 
@@ -164,8 +153,7 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
                     anchors_cache.input_h_cache[self.place_in_unet] = {}
 
                 # Hidden states inside the mask, for uncond (index 0) and cond (index 1) prompts
-                subjects_hidden_states = torch.stack(
-                    [x[self.attnstore.last_mask_dropout[width]] for x in hidden_states.chunk(2)])
+                subjects_hidden_states = torch.stack([x for x in hidden_states.chunk(2)])
                 anchors_cache.input_h_cache[self.place_in_unet][self.attnstore.curr_iter] = subjects_hidden_states
 
             if anchors_cache and anchors_cache.is_inject_mode():
@@ -188,12 +176,6 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
                     query, extended_key, extended_value, op=self.attention_op, scale=attn.scale
                 )
             else:
-                # # We make extended key and value by concatenating the original key and value with the query.
-                # attention_mask_bias = self.attnstore.get_attn_mask_bias(tgt_size = width, bsz = batch_size)
-
-                # if attention_mask_bias is not None:
-                #     attention_mask_bias = torch.cat([x.unsqueeze(0).expand(attn.heads, -1, -1) for x in attention_mask_bias])
-
                 # Pre-allocate the output tensor
                 ex_out = torch.empty_like(query)
 
@@ -201,7 +183,8 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
                     start_idx = i * attn.heads
                     end_idx = start_idx + attn.heads
 
-                    attention_mask = self.attnstore.get_extended_attn_mask_instance(width, i % (batch_size // 2))
+                    attention_mask = self.attnstore.get_extended_attn_mask_instance(width, i % (batch_size // 2),
+                                                                                    batch_size // 2)
 
                     curr_q = query[start_idx:end_idx]
 

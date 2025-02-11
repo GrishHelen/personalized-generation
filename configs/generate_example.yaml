@@ -7,7 +7,6 @@ story_pipeline:
 generation_args:
     seed: 40
     n_steps: 50
-    mask_dropout: 0.5
     same_latent: False
     share_queries: True
     perform_sdsa: True
@@ -15,15 +14,15 @@ generation_args:
     n_anchors: 2
 
 save_images:
-    out_dir: output/candle
+    out_dir: output
     downscale_rate: 4
     save_image_all: True
 
 prompts:
-    style: "A photo of "
-    subject: "an orange candle"
-    concept_token: "candle"
-    settings: [ "among the snowdrifts", "in the bathroom", "on the table next to the pastries" ]
+    style: "An illustration of "
+    subject: "a white fish"
+    concept_token: "fish"
+    settings: [ "on an oval plate", "in a crown", "on the counter"]
 
 
 

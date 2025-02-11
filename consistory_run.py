@@ -77,7 +77,7 @@ def create_latents(story_pipeline, seed, batch_size, same_latent, device, float_
 
 # Batch inference
 def run_batch_generation(story_pipeline, prompts, concept_token,
-                         seed=40, n_steps=50, mask_dropout=0.5,
+                         seed=40, n_steps=50,
                          same_latent=False, share_queries=True,
                          perform_sdsa=True, perform_injection=True,
                          downscale_rate=4, n_anchors=2):
@@ -93,7 +93,6 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
 
     default_attention_store_kwargs = {
         'token_indices': token_indices,
-        'mask_dropout': mask_dropout,
         'extended_mapping': anchor_mappings
     }
 
@@ -110,7 +109,6 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
     else:
         extended_attn_kwargs = {**default_extended_attn_kwargs, 't_range': []}
 
-    print(extended_attn_kwargs['t_range'])
     out = story_pipeline(prompt=prompts, generator=g, latents=latents,
                          attention_store_kwargs=default_attention_store_kwargs,
                          extended_attn_kwargs=extended_attn_kwargs,
@@ -155,7 +153,7 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
 
 # Anchors
 def run_anchor_generation(story_pipeline, prompts, concept_token,
-                          seed=40, n_steps=50, mask_dropout=0.5,
+                          seed=40, n_steps=50,
                           same_latent=False, share_queries=True,
                           perform_sdsa=True, perform_injection=True,
                           downscale_rate=4, cache_cpu_offloading=False):
@@ -170,7 +168,6 @@ def run_anchor_generation(story_pipeline, prompts, concept_token,
 
     default_attention_store_kwargs = {
         'token_indices': token_indices,
-        'mask_dropout': mask_dropout
     }
 
     default_extended_attn_kwargs = {'extend_kv_unet_parts': ['up']}
@@ -189,7 +186,6 @@ def run_anchor_generation(story_pipeline, prompts, concept_token,
     else:
         extended_attn_kwargs = {**default_extended_attn_kwargs, 't_range': []}
 
-    print(extended_attn_kwargs['t_range'])
     out = story_pipeline(prompt=prompts, generator=g, latents=latents,
                          attention_store_kwargs=default_attention_store_kwargs,
                          extended_attn_kwargs=extended_attn_kwargs,
@@ -248,7 +244,7 @@ def run_anchor_generation(story_pipeline, prompts, concept_token,
 
 def run_extra_generation(story_pipeline, prompts, concept_token,
                          anchor_cache_first_stage, anchor_cache_second_stage,
-                         seed=40, n_steps=50, mask_dropout=0.5,
+                         seed=40, n_steps=50,
                          same_latent=False, share_queries=True,
                          perform_sdsa=True, perform_injection=True,
                          downscale_rate=4, cache_cpu_offloading=False):
@@ -263,7 +259,6 @@ def run_extra_generation(story_pipeline, prompts, concept_token,
 
     default_attention_store_kwargs = {
         'token_indices': token_indices,
-        'mask_dropout': mask_dropout
     }
 
     default_extended_attn_kwargs = {'extend_kv_unet_parts': ['up']}
@@ -290,7 +285,6 @@ def run_extra_generation(story_pipeline, prompts, concept_token,
     else:
         extended_attn_kwargs = {**default_extended_attn_kwargs, 't_range': []}
 
-    print(extended_attn_kwargs['t_range'])
     out = story_pipeline(prompt=prompts, generator=g, latents=latents,
                          attention_store_kwargs=default_attention_store_kwargs,
                          extended_attn_kwargs=extended_attn_kwargs,

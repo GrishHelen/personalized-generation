@@ -110,18 +110,13 @@ class AttentionStore:
         self.attn_res = attention_store_kwargs.get('attn_res', (32, 32))
         self.token_indices = attention_store_kwargs['token_indices']
         bsz = self.token_indices.size(1)
-        self.mask_background_query = attention_store_kwargs.get('mask_background_query', False)
         self.original_attn_masks = attention_store_kwargs.get('original_attn_masks', None)
         self.extended_mapping = attention_store_kwargs.get('extended_mapping', torch.ones(bsz, bsz).bool())
-        self.mask_dropout = attention_store_kwargs.get('mask_dropout', 0.0)
-        torch.manual_seed(0)  # For dropout mask reproducibility
-
+        
         self.curr_iter = 0
         self.ALL_RES = [32, 64]
         self.step_store = defaultdict(list)
-        self.attn_masks = {res: None for res in self.ALL_RES}
         self.last_mask = {res: None for res in self.ALL_RES}
-        self.last_mask_dropout = {res: None for res in self.ALL_RES}
 
     def __call__(self, attn, is_cross: bool, place_in_unet: str, attn_heads: int):
         if is_cross and attn.shape[1] == np.prod(self.attn_res):
@@ -133,9 +128,7 @@ class AttentionStore:
 
     def reset(self):
         self.step_store = defaultdict(list)
-        self.attn_masks = {res: None for res in self.ALL_RES}
         self.last_mask = {res: None for res in self.ALL_RES}
-        self.last_mask_dropout = {res: None for res in self.ALL_RES}
 
         torch.cuda.empty_cache()
 
@@ -158,7 +151,6 @@ class AttentionStore:
         # Upsample the attention maps to the target resolution
         # and create the attention masks, unifying masks across the different concepts
         for tgt_size in self.ALL_RES:
-            pixels = tgt_size ** 2
             tgt_agg_attn_maps = [F.interpolate(x.unsqueeze(1), size=tgt_size, mode='bilinear').squeeze(1) for x in
                                  agg_attn_maps]
 
@@ -177,64 +169,15 @@ class AttentionStore:
             attn_masks = torch.stack(attn_masks)
             self.last_mask[tgt_size] = attn_masks.clone()
 
-            # Add mask dropout
-            if self.curr_iter < 1000:
-                rand_mask = (torch.rand_like(attn_masks.float()) < self.mask_dropout)
-                attn_masks[rand_mask] = False
-
-            self.last_mask_dropout[tgt_size] = attn_masks.clone()
-
-            # # Create subject driven extended self attention masks
-            # output_attn_mask = torch.zeros((bsz, tgt_size**2, attn_masks.view(-1).size(0)), device=attn_masks.device).bool()
-
-            # for i in range(bsz):
-            #     for j in range(bsz):
-            #         if i==j:
-            #             output_attn_mask[i, :, j*pixels:(j+1)*pixels] = 1
-            #         else:
-            #             if self.extended_mapping[i,j]:
-            #                 if not self.mask_background_query:
-            #                     output_attn_mask[i, :, j*pixels:(j+1)*pixels] = attn_masks[j].unsqueeze(0).expand(pixels, -1)
-            #                 else:
-            #                     output_attn_mask[i, attn_masks[i], j*pixels:(j+1)*pixels] = attn_masks[j].unsqueeze(0).expand(attn_masks[i].sum(), -1)
-
-            # self.attn_masks[tgt_size] = output_attn_mask
-
-    def get_attn_mask_bias(self, tgt_size, bsz=None):
-        attn_mask = self.attn_masks[tgt_size] if self.original_attn_masks is None else self.original_attn_masks[
-            tgt_size]
-
-        if attn_mask is None:
-            return None
-
-        attn_bias = torch.zeros_like(attn_mask, dtype=torch.float16)
-        attn_bias[~attn_mask] = float('-inf')
-
-        if bsz and bsz != attn_bias.shape[0]:
-            attn_bias = attn_bias.repeat(bsz // attn_bias.shape[0], 1, 1)
-
-        return attn_bias
-
-    def get_extended_attn_mask_instance(self, width, i):
-        attn_mask = self.last_mask_dropout[width]
-        if attn_mask is None:
-            return None
-
+    def get_extended_attn_mask_instance(self, width, i, batch_size):
         n_patches = width ** 2
 
-        output_attn_mask = torch.zeros((attn_mask.shape[0] * attn_mask.shape[1],), device=attn_mask.device,
-                                       dtype=torch.bool)
-        for j in range(attn_mask.shape[0]):
+        output_attn_mask = torch.zeros((batch_size * n_patches,), dtype=torch.bool)
+        for j in range(batch_size):
             if i == j:
                 output_attn_mask[j * n_patches:(j + 1) * n_patches] = 1
             else:
                 if self.extended_mapping[i, j]:
-                    if not self.mask_background_query:
-                        output_attn_mask[j * n_patches:(j + 1) * n_patches] = attn_mask[j].unsqueeze(
-                            0)  # .expand(n_patches, -1)
-                    else:
-                        raise NotImplementedError('mask_background_query is not supported anymore')
-                        output_attn_mask[0, attn_mask[i], k * n_patches:(k + 1) * n_patches] = attn_mask[j].unsqueeze(
-                            0).expand(attn_mask[i].sum(), -1)
+                    output_attn_mask[j * n_patches:(j + 1) * n_patches] = True
 
         return output_attn_mask

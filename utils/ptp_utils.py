@@ -112,7 +112,8 @@ class AttentionStore:
         bsz = self.token_indices.size(1)
         self.original_attn_masks = attention_store_kwargs.get('original_attn_masks', None)
         self.extended_mapping = attention_store_kwargs.get('extended_mapping', torch.ones(bsz, bsz).bool())
-        
+        self.n_anchors = attention_store_kwargs.get('n_anchors', None)
+        self.n_svd = attention_store_kwargs.get('n_svd', None)
         self.curr_iter = 0
         self.ALL_RES = [32, 64]
         self.step_store = defaultdict(list)

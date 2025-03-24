@@ -77,6 +77,20 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
             operator.
     """
 
+    def apply_svd(self, A):
+        A_dtype = A.dtype
+        A = A.float()
+        n_anchors = self.attnstore.n_anchors
+        anchors, target = A[:n_anchors], A[n_anchors:]
+
+        u, s, v = torch.linalg.svd(anchors, full_matrices=False)
+        s[:, self.attnstore.n_svd:] = 0
+        anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
+
+        A = torch.cat([anchors, target]).to(A_dtype)
+
+        return A
+
     def __init__(self, place_in_unet, attnstore, extended_attn_kwargs, attention_op: Optional[Callable] = None):
         self.attention_op = attention_op
         self.t_range = extended_attn_kwargs.get('t_range', [])
@@ -194,6 +208,10 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
                     else:
                         curr_k = key[batch_size // 2:]
                         curr_v = value[batch_size // 2:]
+
+                    if self.attnstore.n_svd is not None and i % (batch_size // 2) >= self.attnstore.n_anchors:
+                        curr_k = self.apply_svd(curr_k)
+                        curr_v = self.apply_svd(curr_v)
 
                     curr_k = curr_k.flatten(0, 1)[attention_mask].unsqueeze(0)
                     curr_v = curr_v.flatten(0, 1)[attention_mask].unsqueeze(0)

@@ -78,13 +78,18 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
     """
 
     def apply_svd(self, A):
+        # self.attnstore.n_svd - сколько оставляем
         A_dtype = A.dtype
         A = A.float()
         n_anchors = self.attnstore.n_anchors
         anchors, target = A[:n_anchors], A[n_anchors:]
 
         u, s, v = torch.linalg.svd(anchors, full_matrices=False)
-        s[:, self.attnstore.n_svd:] = 0
+        if self.attnstore.n_svd >= 1:
+            s[:, int(self.attnstore.n_svd):] = 0
+        else:
+            q = torch.quantile(s, 1 - self.attnstore.n_svd, dim=1, keepdim=True)
+            s[s < q] = 0
         anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
 
         A = torch.cat([anchors, target]).to(A_dtype)
@@ -209,7 +214,7 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
                         curr_k = key[batch_size // 2:]
                         curr_v = value[batch_size // 2:]
 
-                    if self.attnstore.n_svd is not None and i % (batch_size // 2) >= self.attnstore.n_anchors:
+                    if self.attnstore.n_svd is not None:  # and i % (batch_size // 2) >= self.attnstore.n_anchors:
                         curr_k = self.apply_svd(curr_k)
                         curr_v = self.apply_svd(curr_v)
 

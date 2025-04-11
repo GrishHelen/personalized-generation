@@ -77,20 +77,29 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
             operator.
     """
 
-    def apply_svd(self, A):
-        # self.attnstore.n_svd - сколько оставляем
+    def apply_svd(self, A, i, n_svd):
+        # self.attnstore.n_svd_* - сколько оставляем в K,V матрицах
+        n_anchors = self.attnstore.n_anchors
+        if n_anchors == 1 and i == 0:
+            return A
+
         A_dtype = A.dtype
         A = A.float()
-        n_anchors = self.attnstore.n_anchors
         anchors, target = A[:n_anchors], A[n_anchors:]
+        if i < n_anchors:
+            current_img = anchors[i].unsqueeze(dim=0)
+            anchors = torch.cat([anchors[:i], anchors[i + 1:]])
 
         u, s, v = torch.linalg.svd(anchors, full_matrices=False)
-        if self.attnstore.n_svd >= 1:
-            s[:, int(self.attnstore.n_svd):] = 0
+        if n_svd >= 1:
+            s[:, int(n_svd):] = 0
         else:
-            q = torch.quantile(s, 1 - self.attnstore.n_svd, dim=1, keepdim=True)
+            q = torch.quantile(s, 1 - n_svd, dim=1, keepdim=True)
             s[s < q] = 0
         anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
+
+        if i < n_anchors:
+            anchors = torch.cat([anchors[:i], current_img, anchors[i:]])
 
         A = torch.cat([anchors, target]).to(A_dtype)
 
@@ -136,10 +145,9 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
             height = width = int(wh ** 0.5)
 
         is_cross = encoder_hidden_states is not None
-        perform_extend_attn = perform_extend_attn and (not is_cross) and \
-                              any([self.attnstore.curr_iter >= x[0] and self.attnstore.curr_iter <= x[1] for x in
-                                   self.t_range]) and \
-                              self.curr_unet_part in self.extend_kv_unet_parts
+        perform_extend_attn = (perform_extend_attn and (not is_cross) and
+                               any([x[0] <= self.attnstore.curr_iter <= x[1] for x in self.t_range]) and
+                               self.curr_unet_part in self.extend_kv_unet_parts)
 
         batch_size, key_tokens, _ = (
             hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
@@ -214,9 +222,10 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
                         curr_k = key[batch_size // 2:]
                         curr_v = value[batch_size // 2:]
 
-                    if self.attnstore.n_svd is not None:  # and i % (batch_size // 2) >= self.attnstore.n_anchors:
-                        curr_k = self.apply_svd(curr_k)
-                        curr_v = self.apply_svd(curr_v)
+                    if self.attnstore.n_svd_k is not None:
+                        curr_k = self.apply_svd(curr_k, i % (batch_size // 2), self.attnstore.n_svd_k)
+                    if self.attnstore.n_svd_v is not None:
+                        curr_v = self.apply_svd(curr_v, i % (batch_size // 2), self.attnstore.n_svd_v)
 
                     curr_k = curr_k.flatten(0, 1)[attention_mask].unsqueeze(0)
                     curr_v = curr_v.flatten(0, 1)[attention_mask].unsqueeze(0)

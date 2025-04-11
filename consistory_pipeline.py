@@ -31,6 +31,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from attention_processor import register_extended_self_attn
 from consistory_utils import FeatureInjector, AnchorCache, QueryStore
 from utils.ptp_utils import AttentionStore
+import gc
 
 if is_torch_xla_available():
     # import torch_xla.core.xla_model as xm
@@ -489,6 +490,9 @@ class ConsistoryExtendAttnSDXLPipeline(
                 self.attention_store.aggregate_last_steps_attention()
 
         if not output_type == "latent":
+            torch.cuda.empty_cache()
+            gc.collect()
+
             # make sure the VAE is in float32 mode, as it overflows in float16
             needs_upcasting = self.vae.dtype == torch.float16 and self.vae.config.force_upcast
 

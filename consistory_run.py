@@ -80,7 +80,7 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
                          seed=40, n_steps=50,
                          same_latent=False, share_queries=True,
                          perform_sdsa=True, perform_injection=True,
-                         downscale_rate=4, n_anchors=2, n_svd=None):
+                         downscale_rate=4, n_anchors=2, n_svd_k=None, n_svd_v=None):
     device = story_pipeline.device
     tokenizer = story_pipeline.tokenizer
     float_type = story_pipeline.dtype
@@ -95,7 +95,7 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
         'token_indices': token_indices,
         'extended_mapping': anchor_mappings,
         'n_anchors': n_anchors,
-        'n_svd': n_svd
+        'n_svd_k': n_svd_k, 'n_svd_v': n_svd_v
     }
 
     default_extended_attn_kwargs = {'extend_kv_unet_parts': ['up']}
@@ -117,20 +117,21 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
                          share_queries=share_queries,
                          query_store_kwargs=query_store_kwargs,
                          num_inference_steps=n_steps)
-    last_masks = story_pipeline.attention_store.last_mask
-
-    dift_features = unet.latent_store.dift_features['261_0'][batch_size:]
-    dift_features = torch.stack([gaussian_smooth(x, kernel_size=3, sigma=1) for x in dift_features], dim=0)
-
-    nn_map, nn_distances = cyclic_nn_map(dift_features, last_masks, LATENT_RESOLUTIONS, device)
-
-    torch.cuda.empty_cache()
-    gc.collect()
 
     # ------------------ #
     # Extended attention with nn_map #
 
     if perform_injection:
+        last_masks = story_pipeline.attention_store.last_mask
+
+        dift_features = unet.latent_store.dift_features['261_0'][batch_size:]
+        dift_features = torch.stack([gaussian_smooth(x, kernel_size=3, sigma=1) for x in dift_features], dim=0)
+
+        nn_map, nn_distances = cyclic_nn_map(dift_features, last_masks, LATENT_RESOLUTIONS, device)
+
+        torch.cuda.empty_cache()
+        gc.collect()
+
         feature_injector = FeatureInjector(nn_map, nn_distances, last_masks,
                                            inject_range_alpha=[(n_steps // 10, n_steps // 3, 0.8)],
                                            swap_strategy='min', inject_unet_parts=['up', 'down'], dist_thr='dynamic')
@@ -148,6 +149,9 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
         torch.cuda.empty_cache()
         gc.collect()
     else:
+        torch.cuda.empty_cache()
+        gc.collect()
+
         img_all = view_images([np.array(x) for x in out.images], display_image=False, downscale_rate=downscale_rate)
 
     return out.images, img_all

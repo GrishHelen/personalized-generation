@@ -113,8 +113,14 @@ class AttentionStore:
         self.original_attn_masks = attention_store_kwargs.get('original_attn_masks', None)
         self.extended_mapping = attention_store_kwargs.get('extended_mapping', torch.ones(bsz, bsz).bool())
         self.n_anchors = attention_store_kwargs.get('n_anchors', None)
+
         self.n_svd_k = attention_store_kwargs.get('n_svd_k', None)
         self.n_svd_v = attention_store_kwargs.get('n_svd_v', None)
+        self.alpha = attention_store_kwargs.get('alpha', 0.)
+        self.max_sigma = attention_store_kwargs.get('max_sigma', 1.)
+        self.newton_p = attention_store_kwargs.get('newton_p', 1.)
+        self.method = attention_store_kwargs.get('method', 'svd, nullify')
+
         self.curr_iter = 0
         self.ALL_RES = [32, 64]
         self.step_store = defaultdict(list)

@@ -21,6 +21,8 @@ from diffusers.utils import USE_PEFT_BACKEND
 from typing import Callable, Optional
 import torch
 from diffusers.models.attention_processor import Attention
+from numbers import Number
+import numpy as np
 
 from consistory_utils import AnchorCache, FeatureInjector, QueryStore, xformers
 
@@ -77,7 +79,7 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
             operator.
     """
 
-    def apply_svd(self, A, i, n_svd):
+    def apply_svd(self, A, i, matrix_type=None):
         # self.attnstore.n_svd_* - сколько оставляем в K,V матрицах
         n_anchors = self.attnstore.n_anchors
         if n_anchors == 1 and i == 0:
@@ -86,17 +88,85 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
         A_dtype = A.dtype
         A = A.float()
         anchors, target = A[:n_anchors], A[n_anchors:]
+
         if i < n_anchors:
             current_img = anchors[i].unsqueeze(dim=0)
             anchors = torch.cat([anchors[:i], anchors[i + 1:]])
 
-        u, s, v = torch.linalg.svd(anchors, full_matrices=False)
-        if n_svd >= 1:
-            s[:, int(n_svd):] = 0
+        if matrix_type == 'K':
+            n_svd = self.attnstore.n_svd_k
+        elif matrix_type == 'V':
+            n_svd = self.attnstore.n_svd_k
+        elif (self.attnstore.n_svd_k is None) and (self.attnstore.n_svd_v is None):
+            n_svd = None
         else:
-            q = torch.quantile(s, 1 - n_svd, dim=1, keepdim=True)
-            s[s < q] = 0
-        anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
+            n_svd = ((0 if (self.attnstore.n_svd_k is None) else self.attnstore.n_svd_k) +
+                     (0 if (self.attnstore.n_svd_v is None) else self.attnstore.n_svd_v)) / 2
+
+        if self.attnstore.method == 'svd, n_nullify' and (n_svd is not None):
+            u, s, v = torch.linalg.svd(anchors, full_matrices=False)
+            if n_svd >= 1:
+                s[:, int(n_svd):] = 0
+            else:
+                q = torch.quantile(s, 1 - n_svd, dim=1, keepdim=True)
+                s[s < q] = 0
+            anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
+
+        elif self.attnstore.method == 'svd, energy_nullify' and (n_svd is not None):
+            u, s, v = torch.linalg.svd(anchors, full_matrices=False)
+            s_energy = ((s ** 2) / (s ** 2).sum(axis=(-1), keepdims=True))
+            s_energy = torch.cumsum(s_energy, dim=-1)
+            if n_svd >= 1:
+                pass
+            else:
+                s[s_energy > n_svd] = 0
+            anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
+
+        elif self.attnstore.method == 'svd, reweight log^2':
+            u, s, v = torch.linalg.svd(anchors, full_matrices=False)
+
+            s_old_norm = torch.linalg.norm(s)
+            s = torch.log(s)
+            s[s < 0] = 0
+            s = s ** 2
+            s_norm = torch.linalg.norm(s)
+            s *= s_old_norm / s_norm
+
+            anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
+
+        elif self.attnstore.method == 'svd, reweight log':
+            u, s, v = torch.linalg.svd(anchors, full_matrices=False)
+
+            s_old_norm = torch.linalg.norm(s)
+            s = torch.log(s)
+            s[s < 0] = 0
+            s_norm = torch.linalg.norm(s)
+            s *= s_old_norm / s_norm
+
+            anchors = torch.bmm(torch.bmm(u, torch.diag_embed(s)), v)
+
+        elif self.attnstore.method == 'newton-shults':  # метод ньютона-шульца
+            norm = torch.linalg.norm(anchors, dim=(-1, -2), keepdim=True)
+            anchors = anchors / norm
+            x = anchors @ anchors.mT
+
+            if self.attnstore.max_sigma == 'mean':
+                max_sigma = torch.mean(norm)
+            elif self.attnstore.max_sigma == 'max':
+                max_sigma = torch.max(norm)
+            elif isinstance(self.attnstore.max_sigma, Number):
+                max_sigma = self.attnstore.max_sigma
+            else:
+                max_sigma = 2
+
+            p = self.attnstore.newton_p
+            for _ in range(p):
+                x = x @ x
+            sigma_estimate = x.norm(dim=(-1, -2), keepdim=True)
+            x = x * (norm ** (2 ** (p + 1)) / sigma_estimate)
+            anchors = anchors * (norm / sigma_estimate ** (0.5 ** (2 ** (p + 1))))
+            anchors = x @ anchors * max_sigma
+            anchors *= norm / torch.linalg.norm(anchors, dim=(-1, -2), keepdim=True)
 
         if i < n_anchors:
             anchors = torch.cat([anchors[:i], current_img, anchors[i:]])
@@ -222,10 +292,8 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
                         curr_k = key[batch_size // 2:]
                         curr_v = value[batch_size // 2:]
 
-                    if self.attnstore.n_svd_k is not None:
-                        curr_k = self.apply_svd(curr_k, i % (batch_size // 2), self.attnstore.n_svd_k)
-                    if self.attnstore.n_svd_v is not None:
-                        curr_v = self.apply_svd(curr_v, i % (batch_size // 2), self.attnstore.n_svd_v)
+                    curr_k = self.apply_svd(curr_k, i % (batch_size // 2), matrix_type='K')
+                    curr_v = self.apply_svd(curr_v, i % (batch_size // 2), matrix_type='V')
 
                     curr_k = curr_k.flatten(0, 1)[attention_mask].unsqueeze(0)
                     curr_v = curr_v.flatten(0, 1)[attention_mask].unsqueeze(0)

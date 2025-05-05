@@ -80,7 +80,8 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
                          seed=40, n_steps=50,
                          same_latent=False, share_queries=True,
                          perform_sdsa=True, perform_injection=True,
-                         downscale_rate=4, n_anchors=2, n_svd_k=None, n_svd_v=None):
+                         downscale_rate=4, n_anchors=2,
+                         **kwargs):
     device = story_pipeline.device
     tokenizer = story_pipeline.tokenizer
     float_type = story_pipeline.dtype
@@ -94,9 +95,9 @@ def run_batch_generation(story_pipeline, prompts, concept_token,
     default_attention_store_kwargs = {
         'token_indices': token_indices,
         'extended_mapping': anchor_mappings,
-        'n_anchors': n_anchors,
-        'n_svd_k': n_svd_k, 'n_svd_v': n_svd_v
+        'n_anchors': n_anchors
     }
+    default_attention_store_kwargs.update(kwargs)
 
     default_extended_attn_kwargs = {'extend_kv_unet_parts': ['up']}
     query_store_kwargs = {'t_range': [0, n_steps // 10], 'strength_start': 0.9, 'strength_end': 0.81836735}
